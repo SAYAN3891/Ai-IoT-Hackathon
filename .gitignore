@@ -1,0 +1,9 @@
+# Ignore runtime data
+data.json
+data.csv
+
+# Python cache
+__pycache__/
+
+# Environment files
+.env
