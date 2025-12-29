@@ -1,37 +1,67 @@
-from flask import Flask, jsonify
-import json
+# api.py
+import time
+import random
+import firebase_admin
+from firebase_admin import credentials, firestore
 
-app = Flask(__name__)
+# -------------------------------
+# STEP 1: Firebase Initialization
+# -------------------------------
+cred = credentials.Certificate("firebase_key.json")  # friend ka JSON file
+firebase_admin.initialize_app(cred)
 
-DATA_FILE = "data.json"
+db = firestore.client()  # Firestore client
 
-# -----------------------------
-# Get latest vitals
-# -----------------------------
-@app.route("/latest", methods=["GET"])
-def get_latest():
+# -------------------------------
+# STEP 2: Generate Vitals Function
+# -------------------------------
+def generate_vitals():
+    """
+    Generates random vitals data.
+    You can enhance this with alert logic if needed.
+    """
+    hr = random.randint(60, 110)
+    spo2 = random.randint(94, 100)
+    bp = random.randint(100, 150)
+    temp = round(random.uniform(36.5, 38.8), 1)
+    
+    # Simple alert logic
+    if hr < 60 or hr > 100 or spo2 < 94 or bp < 90 or bp > 140 or temp < 36 or temp > 38:
+        alert = "YELLOW"
+    else:
+        alert = "GREEN"
+    
+    vitals = {
+        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "HR": hr,
+        "SpO2": spo2,
+        "BP": bp,
+        "Temp": temp,
+        "alert": alert
+    }
+    return vitals
+
+# -------------------------------
+# STEP 3: Send to Firebase Function
+# -------------------------------
+def send_to_firebase(vitals):
     try:
-        with open(DATA_FILE, "r") as f:
-            data = json.load(f)
-            if len(data) == 0:
-                return jsonify({"message": "No data available"})
-            return jsonify(data[-1])
-    except:
-        return jsonify({"error": "Data file not found"}), 500
+        doc_ref = db.collection("vitals").document()  # Firestore collection 'vitals'
+        doc_ref.set(vitals)
+        print("✅ Sent to Firebase successfully")
+    except Exception as e:
+        print("❌ Firebase connection failed:", e)
 
-
-# -----------------------------
-# Get all vitals (history)
-# -----------------------------
-@app.route("/history", methods=["GET"])
-def get_history():
-    try:
-        with open(DATA_FILE, "r") as f:
-            data = json.load(f)
-            return jsonify(data)
-    except:
-        return jsonify({"error": "Data file not found"}), 500
-
-
+# -------------------------------
+# STEP 4: Main Loop
+# -------------------------------
 if __name__ == "__main__":
-    app.run(debug=True)
+    print("Backend started... Press Ctrl+C to stop.")
+    try:
+        while True:
+            vitals = generate_vitals()
+            print(vitals)           # Local console me print
+            send_to_firebase(vitals)  # Send to Firebase
+            time.sleep(1)            # 1-second interval
+    except KeyboardInterrupt:
+        print("Program stopped safely.")
