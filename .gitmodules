@@ -1,0 +1,3 @@
+[submodule "cloud-backend"]
+	path = cloud-backend
+	url = https://github.com/Sous8Code/cloud-backend.git
